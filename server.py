@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 import random
 
 app = Flask(__name__)
@@ -15,7 +15,7 @@ def say_hello():
 cards = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]
 players = ['Eleni', 'George', 'Theodore']
 
-# Shuffle cards & distribute them per player
+# Shuffles cards & returns their distribution per player
 @app.route('/initialCardsDistribution')
 def distribute_cards():
   random.shuffle(cards)
@@ -26,7 +26,28 @@ def distribute_cards():
     del cards[:6]
   return cardsPerPlayer
 
+# Returns true if it is this player's turn, false otherwise
+@app.route('/hasTurn', methods=['GET'])
+def return_player_turn():
+  # TODO: Implement logic
+  return jsonify({'hasTurn': True})
+
+# Calculates what should happen at the end of each round
+# & returns next player (if the game has not finished)
+@app.route('/roundCompleted', methods=['POST'])
+def complete_round():
+  # TODO:
+  # 1. Calculate & update scores
+  # 2. Check if maximum score was reached
+  #   2a. If yes: finish the game:
+  #       - Return: { gameFinished: true, scores } 
+  #   2b. If no:
+  #       - Calculate next player's turn
+  #       - Update last player that played to the db
+  #       - Return: { gameFinished: false, scores, currentPlayer }
+  
+  res = jsonify({ 'gameFinished': False, 'scores': [], 'currentPlayer': 1 })
+  return res
+
 app.run()
 
-
-# @app.route('/', methods=['GET'])
