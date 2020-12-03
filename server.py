@@ -43,7 +43,9 @@ def complete_round():
   #       - Return: { gameFinished: true, scores } 
   #   2b. If no:
   #       - Calculate next player's turn
-  #       - Update last player that played to the db
+  #       - Update the db with the last player that played
+  #       - Trash used cards
+  #       - Give a new card to each player
   #       - Return: { gameFinished: false, scores, currentPlayer }
   
   res = jsonify({ 'gameFinished': False, 'scores': [], 'currentPlayer': 1 })
