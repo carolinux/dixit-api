@@ -18,7 +18,8 @@ players = [
   { 'name': 'Theodore', 'hasTurn': False }
 ]
 
-cards = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]
+cards = list(range(1, 70))
+playedCards = { 'cards': [], 'phrase': '' }
 random.shuffle(cards)
 
 for player in players:
@@ -43,6 +44,27 @@ def add_player():
     players.append(player)
   return jsonify(players)
 
+# Play card
+@app.route('/playedCards', methods=['POST', 'GET'])
+def play_card():
+  # TODO: To fix condition about number of players (does not work)
+  if request.method=='POST' and len(players) > len(playedCards):
+    card = request.json['card']
+    phrase = request.json['phrase']
+    playedCards['cards'].append(card)
+    playedCards['phrase'] = phrase
+    
+    # TODO: Shuffle
+    # random.shuffle(playedCards)
+    
+    # if len(playedCards)==len(players):
+      # send a notification to the client...
+
+    return jsonify(playedCards)
+  
+  if request.method=='GET':
+    return jsonify(playedCards)
+
 # Add new player
 @app.route('/start', methods=['POST'])
 def start_game():
@@ -56,7 +78,7 @@ def distribute_cards():
   return players
 
 # Return cards of a player
-@app.route('/cards')
+@app.route('/cards', methods=['GET'])
 def return_cards_per_player():
   cards = []
   playerName = request.args.get('player')
