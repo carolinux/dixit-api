@@ -12,7 +12,7 @@ maxPlayersCount = 6
 cardsPerPlayerCount = 6
 
 players = [
-  { 'name': 'Eleni', 'hasTurn': False  },
+  { 'name': 'Eleni', 'hasTurn': True  },
   { 'name': 'George', 'hasTurn': False },
   { 'name': 'Theodore', 'hasTurn': False }
 ]
@@ -34,11 +34,9 @@ def manage_players():
   if request.method == 'GET':
     return jsonify(players)
   elif request.method == 'POST':
-    print('here')
     name = request.json['player']
     player = { 'name': name, 'hasTurn': False, 'mainPlayer': False }
-    # encodedName = cryptocode.encrypt(name, 'foo')
-    # print(encodedName)
+
     if len(players)<maxPlayersCount:
       players.append(player)
     return jsonify(players)
@@ -66,7 +64,6 @@ def play_card():
   if request.method=='GET':
     return jsonify(playedCards)
 
-# Add new player
 @app.route('/start', methods=['POST'])
 def start_game():
   random.shuffle(players)
