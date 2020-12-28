@@ -1,6 +1,9 @@
 from flask import Flask, request, jsonify
 # from flask.ext.socketio import SocketIO, emit
 import random
+from flask_swagger import swagger
+from spec import UserAPI
+import cryptocode
 # from score import updateScore
 
 app = Flask(__name__)
@@ -18,6 +21,9 @@ players = [
   { 'name': 'Theodore', 'hasTurn': False }
 ]
 
+# TODO: Encrypt players' names
+playersDict = {}
+
 cards = list(range(1, 70))
 playedCards = { 'cards': [], 'phrase': '' }
 random.shuffle(cards)
@@ -30,19 +36,30 @@ for player in players:
 # def test_message(message):                        # test_message() is the event callback function.
 #   emit('my response', {'data': 'got it!'})        # Trigger a new event called "my response" 
 
+##############################
+# ROUTES & METHODS UNDERNEATH
+##############################
+@app.route("/spec")
+def spec():
+  swag = swagger(app)
+  swag['info']['version'] = "0.1"
+  swag['info']['title'] = "Dixit API"
+  return jsonify(swag)
 
-# Return players
-@app.route('/players', methods=['GET'])
-def return_players():
-  return jsonify(players)
-
-# Add new player
-@app.route('/players', methods=['POST'])
-def add_player():
-  player = { 'name': request.json['player'], 'hasTurn': False }
-  if len(players)<maxPlayersCount:
-    players.append(player)
-  return jsonify(players)
+# Manage players
+@app.route('/players', methods=['GET', 'POST'])
+def manage_players():
+  if request.method == 'GET':
+    return jsonify(players)
+  elif request.method == 'POST':
+    print('here')
+    name = request.json['player']
+    player = { 'name': name, 'hasTurn': False, 'mainPlayer': False }
+    encodedName = cryptocode.encrypt(name, 'foo')
+    print(encodedName)
+    if len(players)<maxPlayersCount:
+      players.append(player)
+    return jsonify(players)
 
 # Play card
 @app.route('/playedCards', methods=['POST', 'GET'])
@@ -92,7 +109,10 @@ def return_cards_per_player():
 @app.route('/hasTurn', methods=['GET'])
 def return_player_turn():
   # TODO: Implement logic
-  return jsonify({'hasTurn': True})
+  return jsonify({
+    'mainPlayer': False,
+    'hasTurn': True
+  })
 
 # Calculate what should happen at the end of each round
 # & return the next player (if the game has not finished)
