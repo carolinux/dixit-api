@@ -1,19 +1,29 @@
 from flask import Flask, request, jsonify
-# from flask.ext.socketio import SocketIO, emit
+# from flask_socketio import SocketIO, send
+from flask_sse import sse
+
 import random
-from flask_swagger import swagger
 from spec import UserAPI
 import cryptocode
 # from score import updateScore
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
-# socketio = SocketIO(app)
-app.config["DEBUG"] = True
+app.config['SECRET_KEY'] = 'mysecret'
+
+# app.config["REDIS_URL"] = "redis://localhost"
+# app.register_blueprint(sse, url_prefix='/stream')
+
+# Create server using socket and fix CORS errors
+# socketIo = SocketIO(app, cors_allowed_origins='*')
+
+app.debug = True
+# app.host = 'localhost'
 
 # Game constants
 maxPlayersCount = 6
+playersCount = 6
 cardsPerPlayerCount = 6
+enableVoting = False
 
 players = [
   { 'name': 'Eleni', 'hasTurn': False  },
@@ -25,34 +35,33 @@ players = [
 playersDict = {}
 
 cards = list(range(1, 70))
-playedCards = { 'cards': [], 'phrase': '' }
 random.shuffle(cards)
+playedCards = { 'cards': [], 'phrase': '', 'enableVoting': enableVoting }
+
+# @socketIo.on('cardSelected')
+# def handle_card_selection(card):
+#   print('Received***', card)
+
+#   # send(card, broadcast=True)
+#   return None
+
+# @socketIo.on('phraseSelected')
+# def handle_phrase_selection(phrase):
+#   print('Phrase***:', phrase)
+#   send(phrase, broadcast=True)
+#   return None
 
 for player in players:
   player['cards'] = cards[0:cardsPerPlayerCount]
   del cards[:cardsPerPlayerCount]
 
-# @socketio.on('my event')                          # Decorator to catch an event called "my event":
-# def test_message(message):                        # test_message() is the event callback function.
-#   emit('my response', {'data': 'got it!'})        # Trigger a new event called "my response" 
-
-##############################
-# ROUTES & METHODS UNDERNEATH
-##############################
-@app.route("/spec")
-def spec():
-  swag = swagger(app)
-  swag['info']['version'] = "0.1"
-  swag['info']['title'] = "Dixit API"
-  return jsonify(swag)
-
 # Manage players
 @app.route('/players', methods=['GET', 'POST'])
 def manage_players():
   if request.method == 'GET':
+    sse.publish({"message": 'foo'}, type='publish')
     return jsonify(players)
   elif request.method == 'POST':
-    print('here')
     name = request.json['player']
     player = { 'name': name, 'hasTurn': False, 'mainPlayer': False }
     encodedName = cryptocode.encrypt(name, 'foo')
@@ -64,19 +73,24 @@ def manage_players():
 # Play card
 @app.route('/playedCards', methods=['POST', 'GET'])
 def play_card():
-  # TODO: To fix condition about number of players (does not work)
-  if request.method=='POST' and len(players) > len(playedCards):
+  if request.method=='POST':
+    print('posting')
+    mainPlayer = request.json['mainPlayer']
     card = request.json['card']
-    phrase = request.json['phrase']
     playedCards['cards'].append(card)
-    playedCards['phrase'] = phrase
+    if mainPlayer==True:
+      phrase = request.json['phrase']
+      playedCards['phrase'] = phrase
     
     # TODO: Shuffle
     # random.shuffle(playedCards)
     
-    # if len(playedCards)==len(players):
-      # send a notification to the client...
-
+    if len(playedCards['cards']) == playersCount:
+      enableVoting = True
+    else:
+      enableVoting = False
+    playedCards['enableVoting'] = enableVoting
+    # send('phraseSelected', broadcast=True)
     return jsonify(playedCards)
   
   if request.method=='GET':
@@ -110,7 +124,7 @@ def return_cards_per_player():
 def return_player_turn():
   # TODO: Implement logic
   return jsonify({
-    'mainPlayer': False,
+    'mainPlayer': True,
     'hasTurn': True
   })
 
@@ -138,8 +152,11 @@ def complete_round():
   #       - Give a new card to each player
   #       - Return: { gameFinished: false, scores, currentPlayer }
   
-  res = jsonify({ 'gameFinished': False, 'scores': [], 'currentPlayer': 1 })
-  return res
+  # res = jsonify({ 'gameFinished': False, 'scores': [], 'currentPlayer': 1 })
+  # return res
 
-app.run()
+if __name__ == '__main__':
+  # socketIo.run(app)
+  app.run()
+
 
