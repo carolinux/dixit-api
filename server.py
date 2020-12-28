@@ -1,14 +1,10 @@
 from flask import Flask, request, jsonify
-# from flask.ext.socketio import SocketIO, emit
 import random
-from flask_swagger import swagger
 from spec import UserAPI
-import cryptocode
-# from score import updateScore
+# import cryptocode
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-# socketio = SocketIO(app)
 app.config["DEBUG"] = True
 
 # Game constants
@@ -32,20 +28,6 @@ for player in players:
   player['cards'] = cards[0:cardsPerPlayerCount]
   del cards[:cardsPerPlayerCount]
 
-# @socketio.on('my event')                          # Decorator to catch an event called "my event":
-# def test_message(message):                        # test_message() is the event callback function.
-#   emit('my response', {'data': 'got it!'})        # Trigger a new event called "my response" 
-
-##############################
-# ROUTES & METHODS UNDERNEATH
-##############################
-@app.route("/spec")
-def spec():
-  swag = swagger(app)
-  swag['info']['version'] = "0.1"
-  swag['info']['title'] = "Dixit API"
-  return jsonify(swag)
-
 # Manage players
 @app.route('/players', methods=['GET', 'POST'])
 def manage_players():
@@ -55,8 +37,8 @@ def manage_players():
     print('here')
     name = request.json['player']
     player = { 'name': name, 'hasTurn': False, 'mainPlayer': False }
-    encodedName = cryptocode.encrypt(name, 'foo')
-    print(encodedName)
+    # encodedName = cryptocode.encrypt(name, 'foo')
+    # print(encodedName)
     if len(players)<maxPlayersCount:
       players.append(player)
     return jsonify(players)
@@ -67,9 +49,11 @@ def play_card():
   # TODO: To fix condition about number of players (does not work)
   if request.method=='POST' and len(players) > len(playedCards):
     card = request.json['card']
-    phrase = request.json['phrase']
+    mainPlayer = request.json['mainPlayer']
     playedCards['cards'].append(card)
-    playedCards['phrase'] = phrase
+    if mainPlayer:
+      phrase = request.json['phrase']
+      playedCards['phrase'] = phrase
     
     # TODO: Shuffle
     # random.shuffle(playedCards)
@@ -138,8 +122,5 @@ def complete_round():
   #       - Give a new card to each player
   #       - Return: { gameFinished: false, scores, currentPlayer }
   
-  res = jsonify({ 'gameFinished': False, 'scores': [], 'currentPlayer': 1 })
-  return res
-
 app.run()
 
