@@ -52,22 +52,31 @@ def manage_players():
 # Play card
 @app.route('/playedCards', methods=['POST', 'GET'])
 def play_card():
-  # TODO: To fix condition about number of players (does not work)
-  if request.method=='POST' and len(players) > len(playedCards):
-    card = request.json['card']
-    mainPlayer = request.json['mainPlayer']
-    playedCards['cards'].append(card)
-    if mainPlayer:
-      phrase = request.json['phrase']
-      playedCards['phrase'] = phrase
-    
-    # TODO: Shuffle
-    # random.shuffle(playedCards)
-    
-    # if len(playedCards)==len(players):
-      # send a notification to the client...
+  if request.method=='POST':
+    if len(players) > len(playedCards['cards']):
+      card = request.json['card']
+      mainPlayer = request.json['mainPlayer']
+      playedCards['cards'].append(card)
 
-    return jsonify(playedCards)
+      if mainPlayer:
+        phrase = request.json['phrase']
+        playedCards['phrase'] = phrase
+
+      # If all players have played, notify clients
+      # that all players played and the turn was completed
+      if len(players) == len(playedCards['cards']):
+        random.shuffle(playedCards['cards'])
+        roundInfo = jsonify({
+          'playerPlayed': True,
+          'roundCompleted': True,
+          'phrase': playedCards['phrase'],
+          'cards': playedCards['cards']
+        })
+        # Send notification via web sockets
+        # emit('message', roundInfo)
+        return roundInfo
+      else:
+        return jsonify({ 'playerPlayed': True, 'roundCompleted': False })
   
   if request.method=='GET':
     return jsonify(playedCards)
