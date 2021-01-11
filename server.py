@@ -66,7 +66,8 @@ def play_card():
       # that all players played and the turn was completed
       if len(players) == len(playedCards['cards']):
         roundCompleted = True
-        # Send notification via web sockets, add extra info
+        # Send notification via web sockets
+        # TODO: add extra info
         # emit('message', roundCompleted)
       else:
         roundCompleted = False
