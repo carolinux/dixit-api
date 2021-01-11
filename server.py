@@ -1,41 +1,129 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
+from flask_socketio import SocketIO, emit
 import random
+from spec import UserAPI
+# import cryptocode
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
 app.config["DEBUG"] = True
+socketio = SocketIO(app)                                                        
 
-@app.route('/')
-def index():
-  return 'Server Works!'
+# Game constants
+maxPlayersCount = 6
+cardsPerPlayerCount = 6
 
-@app.route('/greet')
-def say_hello():
-  return 'Hello from Server'
+players = [
+  { 'name': 'Eleni', 'hasTurn': True  },
+  { 'name': 'George', 'hasTurn': False },
+  { 'name': 'Theodore', 'hasTurn': False }
+]
 
-cards = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]
-players = ['Eleni', 'George', 'Theodore']
+# TODO: Encrypt players' names
+playersDict = {}
 
-# Shuffles cards & returns their distribution per player
+cards = list(range(1, 70))
+playedCards = { 'cards': [], 'phrase': '' }
+random.shuffle(cards)
+
+for player in players:
+  player['cards'] = cards[0:cardsPerPlayerCount]
+  del cards[:cardsPerPlayerCount]
+
+
+@socketio.on('connect')                                                         
+def connect():      
+  print('Client connected')                                                            
+  emit('message', {'welcome': 'welcome'})  
+
+# Manage players
+@app.route('/players', methods=['GET', 'POST'])
+def manage_players():
+  if request.method == 'GET':
+    return jsonify(players)
+  elif request.method == 'POST':
+    name = request.json['player']
+    player = { 'name': name, 'hasTurn': False, 'mainPlayer': False }
+
+    if len(players)<maxPlayersCount:
+      players.append(player)
+    return jsonify(players)
+
+# Play card
+@app.route('/playedCards', methods=['POST', 'GET'])
+def play_card():
+  if request.method=='POST':
+    if len(players) > len(playedCards['cards']):
+      card = request.json['card']
+      mainPlayer = request.json['mainPlayer']
+      playedCards['cards'].append(card)
+
+      if mainPlayer:
+        phrase = request.json['phrase']
+        playedCards['phrase'] = phrase
+
+      # If all players have played, notify clients
+      # that all players played and the turn was completed
+      if len(players) == len(playedCards['cards']):
+        random.shuffle(playedCards['cards'])
+        roundInfo = jsonify({
+          'playerPlayed': True,
+          'roundCompleted': True,
+          'phrase': playedCards['phrase'],
+          'cards': playedCards['cards']
+        })
+        # Send notification via web sockets
+        # emit('message', roundInfo)
+        return roundInfo
+      else:
+        return jsonify({ 'playerPlayed': True, 'roundCompleted': False })
+  
+  if request.method=='GET':
+    return jsonify(playedCards)
+
+@app.route('/start', methods=['POST'])
+def start_game():
+  random.shuffle(players)
+  players[0]['hasTurn'] = True
+  return jsonify(players)
+
+# Shuffle cards & return their distribution per player
 @app.route('/initialCardsDistribution')
 def distribute_cards():
-  random.shuffle(cards)
-  cardsPerPlayer = {}
+  return players
 
+# Return cards of a player
+@app.route('/cards', methods=['GET'])
+def return_cards_per_player():
+  cards = []
+  playerName = request.args.get('player')
   for player in players:
-    cardsPerPlayer[player] = cards[0:6]
-    del cards[:6]
-  return cardsPerPlayer
+    if player['name'] == playerName:
+      cards = player['cards']   
+    
+  return jsonify(cards)
 
-# Returns true if it is this player's turn, false otherwise
+# Return true if it is this player's turn, false otherwise
 @app.route('/hasTurn', methods=['GET'])
 def return_player_turn():
   # TODO: Implement logic
-  return jsonify({'hasTurn': True})
+  return jsonify({
+    'mainPlayer': False,
+    'hasTurn': True
+  })
 
-# Calculates what should happen at the end of each round
-# & returns next player (if the game has not finished)
+# Calculate what should happen at the end of each round
+# & return the next player (if the game has not finished)
 @app.route('/roundCompleted', methods=['POST'])
 def complete_round():
+  # print(updateScore([]))
+ 
+  # Calculate next player
+  players[0]['hasTurn'] = False
+  players.append(players[0])
+  players.pop(0)
+  players[0]['hasTurn'] = True
+  return jsonify(players)
   # TODO:
   # 1. Calculate & update scores
   # 2. Check if maximum score was reached
@@ -48,8 +136,8 @@ def complete_round():
   #       - Give a new card to each player
   #       - Return: { gameFinished: false, scores, currentPlayer }
   
-  res = jsonify({ 'gameFinished': False, 'scores': [], 'currentPlayer': 1 })
-  return res
+# app.run()
 
-app.run()
 
+if __name__ == '__main__':                                                      
+    socketio.run(app, debug=True) 
