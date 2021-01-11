@@ -65,21 +65,38 @@ def play_card():
       # If all players have played, notify clients
       # that all players played and the turn was completed
       if len(players) == len(playedCards['cards']):
-        random.shuffle(playedCards['cards'])
-        roundInfo = jsonify({
-          'playerPlayed': True,
-          'roundCompleted': True,
-          'phrase': playedCards['phrase'],
-          'cards': playedCards['cards']
-        })
-        # Send notification via web sockets
-        # emit('message', roundInfo)
-        return roundInfo
+        roundCompleted = True
+        # Send notification via web sockets, add extra info
+        # emit('message', roundCompleted)
       else:
-        return jsonify({ 'playerPlayed': True, 'roundCompleted': False })
-  
+        roundCompleted = False
+    else:
+      roundCompleted = True
+
+   # TODO: [improvement] cards played could be encrypted so that other players cannot see them (in the response)
+    random.shuffle(playedCards['cards'])
+    roundInfo = jsonify({
+      'playerPlayed': True,
+      'roundCompleted': roundCompleted,
+      'phrase': playedCards['phrase'],
+      'cards': playedCards['cards']
+    })
+    return roundInfo
+
   if request.method=='GET':
-    return jsonify(playedCards)
+    if len(players) > len(playedCards['cards']):
+      roundCompleted = False
+    else:
+      roundCompleted = True
+
+    random.shuffle(playedCards['cards'])
+    roundInfo = jsonify({
+      'playerPlayed': False,
+      'roundCompleted': roundCompleted,
+      'phrase': playedCards['phrase'],
+      'cards': playedCards['cards']
+    })
+    return roundInfo
 
 @app.route('/start', methods=['POST'])
 def start_game():
@@ -108,7 +125,7 @@ def return_cards_per_player():
 def return_player_turn():
   # TODO: Implement logic
   return jsonify({
-    'mainPlayer': False,
+    'mainPlayer': True,
     'hasTurn': True
   })
 
