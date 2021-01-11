@@ -19,6 +19,8 @@ players = [
   { 'name': 'Theodore', 'hasTurn': False }
 ]
 
+votes = {}
+
 # TODO: Encrypt players' names
 playersDict = {}
 
@@ -126,7 +128,7 @@ def return_cards_per_player():
 def return_player_turn():
   # TODO: Implement logic
   return jsonify({
-    'mainPlayer': True,
+    'mainPlayer': False,
     'hasTurn': True
   })
 
@@ -156,6 +158,15 @@ def complete_round():
   
 # app.run()
 
+@app.route('/vote', methods=['POST'])
+def vote():
+  card = str(request.json['card'])
+  if card in votes:
+    votes[card] = votes[card] + 1
+  else:
+    votes[card] = 1
+  return jsonify({'voted': True})
+
 
 if __name__ == '__main__':                                                      
-    socketio.run(app, debug=True) 
+  socketio.run(app, debug=True) 
