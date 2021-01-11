@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_socketio import SocketIO, emit
 import random
 from spec import UserAPI
 # import cryptocode
@@ -6,6 +7,7 @@ from spec import UserAPI
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 app.config["DEBUG"] = True
+socketio = SocketIO(app)                                                        
 
 # Game constants
 maxPlayersCount = 6
@@ -27,6 +29,12 @@ random.shuffle(cards)
 for player in players:
   player['cards'] = cards[0:cardsPerPlayerCount]
   del cards[:cardsPerPlayerCount]
+
+
+@socketio.on('connect')                                                         
+def connect():      
+  print('Client connected')                                                            
+  emit('message', {'welcome': 'welcome'})  
 
 # Manage players
 @app.route('/players', methods=['GET', 'POST'])
@@ -119,5 +127,8 @@ def complete_round():
   #       - Give a new card to each player
   #       - Return: { gameFinished: false, scores, currentPlayer }
   
-app.run()
+# app.run()
 
+
+if __name__ == '__main__':                                                      
+    socketio.run(app, debug=True) 
