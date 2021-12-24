@@ -11,8 +11,11 @@ MAX_PLAYERS = 6
 
 class Game(object):
 
-    def __init__(self):
-        self.id = uuid4()
+    def __init__(self, id=None):
+        if id:
+            self.id = id
+        else:
+            self.id = uuid4()
         self.sealedStates = []
         self.currentState = WAITING_TO_START
         self.players = []
@@ -38,8 +41,11 @@ class Game(object):
         if len(self.players) == MAX_PLAYERS:
             self.start()
 
+    def is_started(self):
+        return self.currentState != WAITING_TO_START
+
     def start(self):
-        if self.currentState != WAITING_TO_START:
+        if self.is_started():
             raise Exception("Could not start game already in progress")
         elif len(self.players) < MIN_PLAYERS or len(self.players) > MAX_PLAYERS:
             raise Exception("Need to have between {} and {} players".format(MIN_PLAYERS, MAX_PLAYERS))
@@ -50,3 +56,19 @@ class Game(object):
             self.currentState = 'WAITING_FOR_NARRATOR'
             # notify non narrators
             # notify narrator in soquette
+
+    def serialize_for_list_view(self, joinable_for_player=None):
+        if not joinable_for_player:
+            return {'id': self.id, 'players': len(self.players), 'state': self.currentState, 'playerString': ','.join(self.players)}
+        else:
+            return {'id': self.id, 'players': len(self.players), 'state': self.currentState,
+                    'playerString': ','.join(self.players), 'join_action': self.get_joinability(joinable_for_player)}
+
+    def get_joinability(self, player):
+
+        if player in self.players:
+            return 'rejoin'
+        elif len(self.players) < MAX_PLAYERS and not self.is_started():
+            return 'join'
+        else:
+            return "game_already_started"
