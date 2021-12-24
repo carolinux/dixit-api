@@ -15,6 +15,8 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 games = {}
 games['chonky-bird'] = Game('chonky-bird')
 
+#uuid_to_player = {} # set a uuid in teh cookie
+
 @socketio.on('connect')                                                         
 def connect():      
   print('Client connected')                                                            
