@@ -1,16 +1,25 @@
-from flask import Flask, request, jsonify
+import datetime
+
+import jwt
+from flask import Flask, request, jsonify, make_response
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS, cross_origin
+
 
 from cute_ids import generate_cute_id
 from models import Game
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
+app.config['SECRET_KEY'] = 'verysecret!'
 app.config["DEBUG"] = True
 socketio = SocketIO(app)
 cors = CORS(app)
+# origins=["http://127.0.0.1:3000"], headers=['Content-Type'], expose_headers=['Access-Control-Allow-Origin'], supports_credentials=True
 app.config['CORS_HEADERS'] = 'Content-Type'
+app.config['CORS_SUPPORTS_CREDENTIALS'] = True
+app.config['CORS_SUPPORTS_CREDENTIALS'] = True
+app.config['CORS_ORIGINS'] = ["http://127.0.0.1:3000"]
+app.config['CORS_EXPOSE_HEADERS'] = ['Access-Control-Allow-Origin']
 
 games = {}
 games['chonky-bird'] = Game('chonky-bird')
@@ -21,6 +30,18 @@ def connect():
   print('Client connected')                                                            
   emit('message', {'welcome': 'welcome'})
 
+
+def create_token(player_name, gid):
+    return jwt.encode({'public_id': player_name, 'gid': gid, 'exp': datetime.datetime.now() + datetime.timedelta(minutes=120)},
+                       app.config['SECRET_KEY'])
+
+@app.route('/cookie/')
+def cookie():
+    res = make_response("Setting a cookie")
+    res.set_cookie('foog', 'bar')
+    res.set_cookie('whar', 'garbl')
+    print(res.headers)
+    return res
 
 
 @app.route('/games', methods=['POST', 'GET'])
@@ -41,7 +62,12 @@ def games_api():
             game = get_game_by_id(uid)
 
         game.join(player_name)
-        return jsonify({"game": game.id})
+        resp = make_response(jsonify({"game": game.id}))
+        resp.set_cookie("player", player_name, domain='127.0.0.1')
+        resp.set_cookie("gid", game.id)
+        resp.set_cookie("token", create_token(player_name, game.id))
+        print(resp.headers)
+        return resp
 
     else:
         if request.args.get('joinable_for_player'):
@@ -50,6 +76,11 @@ def games_api():
             player = None
         return jsonify({"games": [g.serialize_for_list_view(joinable_for_player=player) for _, g in games.items()]})
 
+
+@app.after_request
+def creds(response):
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
 
 def get_game_by_id(gid):
     return games[gid]
