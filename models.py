@@ -2,9 +2,11 @@ import random
 from uuid import uuid4
 
 WAITING_TO_START = "waiting_to_start"
-WAIT_FOR_NARRATOR = "waiting_for_narrator"
-MIN_PLAYERS = 3
+WAITING_FOR_NARRATOR = "waiting_for_narrator"
+MIN_PLAYERS = 1 # for testing..
 MAX_PLAYERS = 6
+INITIAL_CARD_ALLOCATION = 6
+SUBSEQUENT_CARD_ALLOCATION = 1
 
 # TODO: state transitions...
 
@@ -16,15 +18,16 @@ class Game(object):
             self.id = id
         else:
             self.id = uuid4()
-        self.sealedStates = []
+        self.sealedRounds = []
         self.currentState = WAITING_TO_START
         self.players = []
         self.narratorIdx = None
+        self.cards = list(range(1, 71)) # change...
 
 
 
     def create_playing_order(self):
-        # can also use join order as playing order...
+        random.shuffle(self.cards)
         random.shuffle(self.players)
 
 
@@ -44,6 +47,17 @@ class Game(object):
     def is_started(self):
         return self.currentState != WAITING_TO_START
 
+    def allocate_cards(self, card_allocation=SUBSEQUENT_CARD_ALLOCATION):
+        self.currentRound['allocations'] = {}
+        allocations = self.currentRound['allocations']
+        for _ in range(card_allocation):
+            for player in self.players:
+                card = self.cards.pop()
+                if player not in allocations:
+                    allocations[player] = []
+                allocations[player].append(card)
+
+
     def start(self):
         if self.is_started():
             raise Exception("Could not start game already in progress")
@@ -53,7 +67,9 @@ class Game(object):
             #self.sealedStates.append(self.currentState)
             self.create_playing_order()
             self.narratorIdx = 0
-            self.currentState = 'WAITING_FOR_NARRATOR'
+            self.currentState = WAITING_FOR_NARRATOR
+            self.currentRound = {}
+            self.allocate_cards(INITIAL_CARD_ALLOCATION)
             # notify non narrators
             # notify narrator in soquette
 
@@ -76,8 +92,22 @@ class Game(object):
     def contains_player(self, player):
         return player in self.players
 
-    def serialize_for_status_view(self):
+    def serialize_for_status_view(self, player):
         data = self.serialize_for_list_view()
-        # TODO more state specific info
-        data['playerList'] = [{"name": p} for p in self.players]
+        data['playerList'] = sorted([{"name": p} for p in self.players], key=lambda x: x['name'])
+        data['roundInfo'] = self.get_round_info(player)
+        data['isNarrator'] = self.get_narrator() == player
         return data
+
+
+    def get_narrator(self):
+        if self.narratorIdx:
+            return self.players[self.narratorIdx]
+
+    def get_round_info(self, player):
+        if not self.is_started():
+            return {'idx': None, 'narrator': None, 'cards': []}
+        idx = len(self.sealedRounds) + 1
+        phrase = self.currentRound.get('phrase')
+        cards = self.currentRound.get('allocations', {}).get(player, [])
+        return {'idx': idx, 'narrator': self.get_narrator(), 'phrase': phrase, 'cards': cards}

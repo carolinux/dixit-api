@@ -25,6 +25,7 @@ app.config['CORS_EXPOSE_HEADERS'] = ['Access-Control-Allow-Origin']
 
 games = {}
 games['chonky-bird'] = Game('chonky-bird')
+counter = {'c':0}
 
 
 @socketio.on('connect')                                                         
@@ -92,29 +93,50 @@ def add_game(g):
 @cross_origin()
 @utils.authenticate_with_cookie_token
 def games_status_api(gid):
+    counter['c']+=1
+    print("Called {} times".format(counter['c']))
     if request.method == "GET":
         print(request.headers)
 
-        ### verify that game exists and current request is allowed to get its general state ###
-        intended_game = request.cookies.to_dict()['gid']
-        player = request.cookies.to_dict()['player']
-        if intended_game != gid:
-            # the game in the cookie is different than the one the request is trying to get info for
-            print("Trying to get data for {} when the game the player is in is {}".format(gid, intended_game))
-            flask.abort(403)
-
-        game = get_game_by_id(gid)
-        if not game:
-            flask.abort(404)
-        if not game.contains_player(player):
-            print("Player {} is not in game {}".format(player, gid))
-            flask.abort(403)
+        ### verify that game exists and current request is allowed to get its general state and their personal data ###
+        game, player = get_authenticated_game_and_player_or_error(gid, request)
         ### end verify ###
 
-        game_data = game.serialize_for_status_view()
+        game_data = game.serialize_for_status_view(player)
         # get the public state
-        # and the users state TODO: verify user id with JWT..
+        # TODO: and the users state, cards etc
         return jsonify({"game": game_data})
+
+
+def get_authenticated_game_and_player_or_error(gid, request):
+    intended_game = request.cookies.to_dict()['gid']
+    player = request.cookies.to_dict()['player']
+    if intended_game != gid:
+        # the game in the cookie is different than the one the request is trying to get info for
+        print("Trying to get data for {} when the game the player is in is {}".format(gid, intended_game))
+        flask.abort(403)
+    game = get_game_by_id(gid)
+    if not game:
+        flask.abort(404)
+    if not game.contains_player(player):
+        print("Player {} is not in game {}".format(player, gid))
+        flask.abort(403)
+    return game, player
+
+
+@app.route('/games/<gid>/start', methods=['PUT'])
+@cross_origin()
+@utils.authenticate_with_cookie_token
+def games_start(gid):
+    game, _ = get_authenticated_game_and_player_or_error(gid, request)
+    try:
+        game.start()
+    except Exception as e:
+        print(e)
+        flask.abort(400)
+    game_data = game.serialize_for_status_view()
+    return jsonify({"game": game_data})
+
 
 
 if __name__ == '__main__':                                                      
