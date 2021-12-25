@@ -35,10 +35,10 @@ def games_api():
                 if uid not in games:
                     break
             game = Game(uid)
-            games[game.id] = game
+            add_game(game)
         else:
             uid = game_id
-            game = games[uid]
+            game = get_game_by_id(uid)
 
         game.join(player_name)
         return jsonify({"game": game.id})
@@ -49,6 +49,26 @@ def games_api():
         else:
             player = None
         return jsonify({"games": [g.serialize_for_list_view(joinable_for_player=player) for _, g in games.items()]})
+
+
+def get_game_by_id(gid):
+    return games[gid]
+
+
+def add_game(g):
+    games[g.id] = g
+
+
+@app.route('/games/<gid>', methods=['POST', 'GET'])
+@cross_origin()
+def games_status_api(gid):
+    if request.method == "GET":
+        player_name = request.json['player']
+        game = get_game_by_id(gid)
+        game_data = game.serialize_for_status_view()
+        # get the public state
+        # and the users state TODO: verify user id with JWT..
+        return jsonify({"game": game_data})
 
 if __name__ == '__main__':                                                      
   socketio.run(app, port=5000, debug=True) 

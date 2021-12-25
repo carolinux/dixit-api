@@ -72,3 +72,8 @@ class Game(object):
             return 'join'
         else:
             return "game_already_started"
+
+    def serialize_for_status_view(self):
+        data = self.serialize_for_list_view()
+        # TODO more state specific info
+        return data
