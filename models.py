@@ -73,6 +73,9 @@ class Game(object):
         else:
             return "game_already_started"
 
+    def contains_player(self, player):
+        return player in self.players
+
     def serialize_for_status_view(self):
         data = self.serialize_for_list_view()
         # TODO more state specific info

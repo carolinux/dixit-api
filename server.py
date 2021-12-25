@@ -1,6 +1,6 @@
 import datetime
 
-import jwt
+import flask
 from flask import Flask, request, jsonify, make_response
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS, cross_origin
@@ -8,9 +8,11 @@ from flask_cors import CORS, cross_origin
 
 from cute_ids import generate_cute_id
 from models import Game
+import utils
+import conf
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'verysecret!'
+app.config['SECRET_KEY'] = conf.secret_key
 app.config["DEBUG"] = True
 socketio = SocketIO(app)
 cors = CORS(app)
@@ -30,10 +32,6 @@ def connect():
   print('Client connected')                                                            
   emit('message', {'welcome': 'welcome'})
 
-
-def create_token(player_name, gid):
-    return jwt.encode({'public_id': player_name, 'gid': gid, 'exp': datetime.datetime.now() + datetime.timedelta(minutes=120)},
-                       app.config['SECRET_KEY'])
 
 @app.route('/cookie/')
 def cookie():
@@ -65,7 +63,7 @@ def games_api():
         resp = make_response(jsonify({"game": game.id}))
         resp.set_cookie("player", player_name, domain='127.0.0.1')
         resp.set_cookie("gid", game.id)
-        resp.set_cookie("token", create_token(player_name, game.id))
+        resp.set_cookie("token", utils.create_token(player_name, game.id))
         print(resp.headers)
         return resp
 
@@ -80,11 +78,11 @@ def games_api():
 @app.after_request
 def creds(response):
     response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Origin'] = "http://127.0.0.1:3000"
     return response
 
 def get_game_by_id(gid):
-    return games[gid]
-
+    return games.get(gid)
 
 def add_game(g):
     games[g.id] = g
@@ -92,10 +90,27 @@ def add_game(g):
 
 @app.route('/games/<gid>', methods=['POST', 'GET'])
 @cross_origin()
+@utils.authenticate_with_cookie_token
 def games_status_api(gid):
     if request.method == "GET":
-        player_name = request.args.get('player')
+        print(request.headers)
+
+        ### verify that game exists and current request is allowed to get its general state ###
+        intended_game = request.cookies.to_dict()['gid']
+        player = request.cookies.to_dict()['player']
+        if intended_game != gid:
+            # the game in the cookie is different than the one the request is trying to get info for
+            print("Trying to get data for {} when the game the player is in is {}".format(gid, intended_game))
+            flask.abort(403)
+
         game = get_game_by_id(gid)
+        if not game:
+            flask.abort(404)
+        if not game.contains_player(player):
+            print("Player {} is not in game {}".format(player, gid))
+            flask.abort(403)
+        ### end verify ###
+
         game_data = game.serialize_for_status_view()
         # get the public state
         # and the users state TODO: verify user id with JWT..
