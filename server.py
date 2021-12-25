@@ -63,12 +63,13 @@ def add_game(g):
 @cross_origin()
 def games_status_api(gid):
     if request.method == "GET":
-        player_name = request.json['player']
+        player_name = request.args.get('player')
         game = get_game_by_id(gid)
         game_data = game.serialize_for_status_view()
         # get the public state
         # and the users state TODO: verify user id with JWT..
         return jsonify({"game": game_data})
+
 
 if __name__ == '__main__':                                                      
   socketio.run(app, port=5000, debug=True) 

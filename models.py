@@ -76,4 +76,5 @@ class Game(object):
     def serialize_for_status_view(self):
         data = self.serialize_for_list_view()
         # TODO more state specific info
+        data['playerList'] = [{"name": p} for p in self.players]
         return data
