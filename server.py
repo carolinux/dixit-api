@@ -15,7 +15,6 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 games = {}
 games['chonky-bird'] = Game('chonky-bird')
 
-#uuid_to_player = {} # set a uuid in teh cookie
 
 @socketio.on('connect')                                                         
 def connect():      
@@ -29,14 +28,20 @@ def connect():
 def games_api():
     if request.method == 'POST':
         player_name = request.json['player']
-        while True:
-            uid = generate_cute_id()
-            if uid not in games:
-                break
-        game = Game(uid)
-        games[game.id] = game
+        game_id = request.json["game"]
+        if game_id == "new":
+            while True:
+                uid = generate_cute_id()
+                if uid not in games:
+                    break
+            game = Game(uid)
+            games[game.id] = game
+        else:
+            uid = game_id
+            game = games[uid]
+
         game.join(player_name)
-        return jsonify({"gameid": game.id})
+        return jsonify({"game": game.id})
 
     else:
         if request.args.get('joinable_for_player'):

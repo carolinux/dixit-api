@@ -33,13 +33,13 @@ class Game(object):
         return
 
     def join(self, player_name):
+        if player_name in self.players:
+            return
 
         if len(self.players) >= MAX_PLAYERS:
             raise Exception("Game {} is full".format(self.id))
         self.players.append(player_name)
 
-        if len(self.players) == MAX_PLAYERS:
-            self.start()
 
     def is_started(self):
         return self.currentState != WAITING_TO_START
@@ -67,7 +67,7 @@ class Game(object):
     def get_joinability(self, player):
 
         if player in self.players:
-            return 'rejoin'
+            return 'rejoin' # and the player state is up to date with game state... i suppose
         elif len(self.players) < MAX_PLAYERS and not self.is_started():
             return 'join'
         else:
