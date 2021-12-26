@@ -5,6 +5,7 @@ WAITING_TO_START = "waiting_to_start"
 WAITING_FOR_NARRATOR = "waiting_for_narrator"
 WAITING_FOR_PLAYERS = "waiting_for_players"
 WAITING_FOR_VOTES = "waiting_for_votes"
+ROUND_REVEALED = "round_revealed"
 MIN_PLAYERS = 1 # for testing..
 MAX_PLAYERS = 6
 INITIAL_CARD_ALLOCATION = 6
@@ -24,7 +25,7 @@ class Game(object):
         self.currentState = WAITING_TO_START
         self.players = []
         self.narratorIdx = None
-        self.cards = list(range(1, 71)) # change...
+        self.cards = list(range(1, 101)) # <- for the medusa deck change... allow to choose deck?
 
 
 
@@ -85,14 +86,24 @@ class Game(object):
 
     def get_round_info(self, player):
         if not self.is_started():
-            return {'idx': None, 'narrator': None, 'cards': []}
+            return {'idx': None, 'narrator': None, 'hand': [], 'playedCards': []}
         idx = len(self.sealedRounds) + 1
         phrase = self.currentRound.get('phrase')
-        cards = self.currentRound.get('allocations', {}).get(player, [])
-        return {'idx': idx, 'narrator': self.get_narrator(), 'phrase': phrase, 'cards': cards}
+        hand = self.currentRound.get('allocations', {}).get(player, [])
+        played_cards = self.get_played_cards()
+        return {'idx': idx, 'narrator': self.get_narrator(), 'phrase': phrase, 'hand': hand, 'playedCards': played_cards}
 
     def is_narrator(self, player):
         return self.get_narrator() == player
+
+    def get_played_cards(self):
+        #if self.currentState in (ROUND_REVEALED, WAITING_FOR_VOTES):
+        # return more info
+        if self.currentState == WAITING_FOR_PLAYERS:
+            return (1 + len(self.currentRound['decoys'])) * ['back']
+        return []
+
+
 
 
     ## state transitions from here on -- need to be locked ##
@@ -127,6 +138,7 @@ class Game(object):
             raise Exception("Trying to set card at an invalid point in the game")
         self.currentRound['phrase'] = phrase
         self.currentRound['narratorCard'] = card
+        self.currentRound['allocations'][player].remove(card)
         self.currentState = WAITING_FOR_PLAYERS
 
 
@@ -137,6 +149,7 @@ class Game(object):
             raise Exception("Trying to set card at an invalid point in the game")
 
         self.currentRound['decoys'][player] = card
+        self.currentRound['allocations'][player].remove(card)
         if len(self.currentRound['decoys'] == len(self.players) -1):
             self.currentState = WAITING_FOR_VOTES
 
