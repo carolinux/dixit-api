@@ -138,6 +138,26 @@ def games_start(gid):
     return jsonify({"game": game_data})
 
 
+@app.route('/games/<gid>/set', methods=['PUT'])
+@cross_origin()
+@utils.authenticate_with_cookie_token
+def games_set_card(gid):
+    game, player = get_authenticated_game_and_player_or_error(gid, request)
+    try:
+        card = request.json['card']
+        phrase = request.json.get('phrase')
+        if phrase:
+            game.set_narrator_card(player, card, phrase)
+        else:
+            game.set_decoy_card(player, card)
+    except Exception as e:
+        print(e)
+        flask.abort(400)
+    game_data = game.serialize_for_status_view(player)
+    return jsonify({"game": game_data})
+
+
+
 
 if __name__ == '__main__':                                                      
   socketio.run(app, port=5000, debug=True) 

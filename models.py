@@ -3,6 +3,8 @@ from uuid import uuid4
 
 WAITING_TO_START = "waiting_to_start"
 WAITING_FOR_NARRATOR = "waiting_for_narrator"
+WAITING_FOR_PLAYERS = "waiting_for_players"
+WAITING_FOR_VOTES = "waiting_for_votes"
 MIN_PLAYERS = 1 # for testing..
 MAX_PLAYERS = 6
 INITIAL_CARD_ALLOCATION = 6
@@ -35,14 +37,6 @@ class Game(object):
         """rejoin game on disconnec"""
         return
 
-    def join(self, player_name):
-        if player_name in self.players:
-            return
-
-        if len(self.players) >= MAX_PLAYERS:
-            raise Exception("Game {} is full".format(self.id))
-        self.players.append(player_name)
-
 
     def is_started(self):
         return self.currentState != WAITING_TO_START
@@ -57,21 +51,6 @@ class Game(object):
                     allocations[player] = []
                 allocations[player].append(card)
 
-
-    def start(self):
-        if self.is_started():
-            raise Exception("Could not start game already in progress")
-        elif len(self.players) < MIN_PLAYERS or len(self.players) > MAX_PLAYERS:
-            raise Exception("Need to have between {} and {} players".format(MIN_PLAYERS, MAX_PLAYERS))
-        else:
-            #self.sealedStates.append(self.currentState)
-            self.create_playing_order()
-            self.narratorIdx = 0
-            self.currentState = WAITING_FOR_NARRATOR
-            self.currentRound = {}
-            self.allocate_cards(INITIAL_CARD_ALLOCATION)
-            # notify non narrators
-            # notify narrator in soquette
 
     def serialize_for_list_view(self, joinable_for_player=None):
         if not joinable_for_player:
@@ -96,12 +75,12 @@ class Game(object):
         data = self.serialize_for_list_view()
         data['playerList'] = sorted([{"name": p} for p in self.players], key=lambda x: x['name'])
         data['roundInfo'] = self.get_round_info(player)
-        data['isNarrator'] = self.get_narrator() == player
+        data['isNarrator'] = self.is_narrator(player)
         return data
 
 
     def get_narrator(self):
-        if self.narratorIdx:
+        if self.narratorIdx is not None:
             return self.players[self.narratorIdx]
 
     def get_round_info(self, player):
@@ -111,3 +90,53 @@ class Game(object):
         phrase = self.currentRound.get('phrase')
         cards = self.currentRound.get('allocations', {}).get(player, [])
         return {'idx': idx, 'narrator': self.get_narrator(), 'phrase': phrase, 'cards': cards}
+
+    def is_narrator(self, player):
+        return self.get_narrator() == player
+
+
+    ## state transitions from here on -- need to be locked ##
+
+    def join(self, player_name):
+        if player_name in self.players:
+            return
+
+        if len(self.players) >= MAX_PLAYERS:
+            raise Exception("Game {} is full".format(self.id))
+        self.players.append(player_name)
+
+    def start(self):
+        if self.is_started():
+            raise Exception("Could not start game already in progress")
+        elif len(self.players) < MIN_PLAYERS or len(self.players) > MAX_PLAYERS:
+            raise Exception("Need to have between {} and {} players".format(MIN_PLAYERS, MAX_PLAYERS))
+        else:
+            #self.sealedStates.append(self.currentState)
+            self.create_playing_order()
+            self.narratorIdx = 0
+            self.currentState = WAITING_FOR_NARRATOR
+            self.currentRound = {}
+            self.currentRound['decoys'] = {}
+            self.allocate_cards(INITIAL_CARD_ALLOCATION)
+
+
+    def set_narrator_card(self, player, card, phrase):
+        if not self.is_narrator(player):
+            raise Exception("Trying to set card without being narrator {}, {}".format(player, self.get_narrator()))
+        if self.currentState != WAITING_FOR_NARRATOR:
+            raise Exception("Trying to set card at an invalid point in the game")
+        self.currentRound['phrase'] = phrase
+        self.currentRound['narratorCard'] = card
+        self.currentState = WAITING_FOR_PLAYERS
+
+
+    def set_decoy_card(self, player, card):
+        if self.is_narrator(player):
+            raise Exception("Trying to set decoy card while being narrator")
+        if self.currentState != WAITING_FOR_PLAYERS:
+            raise Exception("Trying to set card at an invalid point in the game")
+
+        self.currentRound['decoys'][player] = card
+        if len(self.currentRound['decoys'] == len(self.players) -1):
+            self.currentState = WAITING_FOR_VOTES
+
