@@ -72,9 +72,22 @@ class Game(object):
     def contains_player(self, player):
         return player in self.players
 
+    def get_player_info(self):
+        return [{"name": p, 'isNarrator': self.is_narrator(p), 'hasVoted': False, 'hasSetCard': self.has_set_card(p)} for p in self.players]
+
+
+    def has_set_card(self, player):
+        if not self.is_started():
+            return False
+        if self.is_narrator(player):
+            return self.currentRound.get("narratorCard") is not None
+        else:
+            return self.currentRound.get("decoys", {}).get(player) is not None
+
+
     def serialize_for_status_view(self, player):
         data = self.serialize_for_list_view()
-        data['playerList'] = sorted([{"name": p} for p in self.players], key=lambda x: x['name'])
+        data['playerList'] = self.get_player_info()
         data['roundInfo'] = self.get_round_info(player)
         data['isNarrator'] = self.is_narrator(player)
         return data
@@ -88,22 +101,30 @@ class Game(object):
         if not self.is_started():
             return {'idx': None, 'narrator': None, 'hand': [], 'playedCards': []}
         idx = len(self.sealedRounds) + 1
-        phrase = self.currentRound.get('phrase')
-        hand = self.currentRound.get('allocations', {}).get(player, [])
+        phrase = self.currentRound.get('phrase', '')
+        hand = self.get_hand(player)
         played_cards = self.get_played_cards()
         return {'idx': idx, 'narrator': self.get_narrator(), 'phrase': phrase, 'hand': hand, 'playedCards': played_cards}
+
+
+    def get_hand(self, player):
+        allocations = self.currentRound.get('allocations', {}).get(player, [])
+        if self.currentState == WAITING_FOR_VOTES:
+            return ['back'] * len(allocations)
+        else:
+            return allocations
+
 
     def is_narrator(self, player):
         return self.get_narrator() == player
 
     def get_played_cards(self):
-        #if self.currentState in (ROUND_REVEALED, WAITING_FOR_VOTES):
-        # return more info
         if self.currentState == WAITING_FOR_PLAYERS:
+            # do not reveal the cards to the frontend
             return (1 + len(self.currentRound['decoys'])) * ['back']
+        if self.currentState == WAITING_FOR_VOTES:
+            return self.currentRound['allCards']
         return []
-
-
 
 
     ## state transitions from here on -- need to be locked ##
@@ -150,6 +171,8 @@ class Game(object):
 
         self.currentRound['decoys'][player] = card
         self.currentRound['allocations'][player].remove(card)
-        if len(self.currentRound['decoys'] == len(self.players) -1):
+        if len(self.currentRound['decoys']) == len(self.players) -1:
+            self.currentRound['allCards'] = [self.currentRound['narratorCard']] + list(self.currentRound['decoys'].values())
+            random.shuffle(self.currentRound['allCards']);
             self.currentState = WAITING_FOR_VOTES
 

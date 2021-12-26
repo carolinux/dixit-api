@@ -65,7 +65,6 @@ def games_api():
         resp.set_cookie("player", player_name, domain='127.0.0.1')
         resp.set_cookie("gid", game.id)
         resp.set_cookie("token", utils.create_token(player_name, game.id))
-        print(resp.headers)
         return resp
 
     else:
@@ -96,7 +95,6 @@ def games_status_api(gid):
     counter['c']+=1
     print("Called {} times".format(counter['c']))
     if request.method == "GET":
-        print(request.headers)
 
         ### verify that game exists and current request is allowed to get its general state and their personal data ###
         game, player = get_authenticated_game_and_player_or_error(gid, request)
