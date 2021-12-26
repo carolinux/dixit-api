@@ -128,13 +128,13 @@ def get_authenticated_game_and_player_or_error(gid, request):
 @cross_origin()
 @utils.authenticate_with_cookie_token
 def games_start(gid):
-    game, _ = get_authenticated_game_and_player_or_error(gid, request)
+    game, player = get_authenticated_game_and_player_or_error(gid, request)
     try:
         game.start()
     except Exception as e:
         print(e)
         flask.abort(400)
-    game_data = game.serialize_for_status_view()
+    game_data = game.serialize_for_status_view(player)
     return jsonify({"game": game_data})
 
 
