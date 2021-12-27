@@ -173,7 +173,9 @@ class Game(object):
 
     def join(self, player_name):
         if player_name in self.players:
-            return
+            raise Exception("Player with name {} already in game {}.".format(player_name, self.id))
+        if not player_name:
+            raise Exception("Player name cannot be empty")
 
         if len(self.players) >= MAX_PLAYERS:
             raise Exception("Game {} is full".format(self.id))

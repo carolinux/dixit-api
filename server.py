@@ -59,7 +59,11 @@ def games_api():
             uid = game_id
             game = get_game_by_id(uid)
 
-        game.join(player_name)
+        try:
+            game.join(player_name)
+        except Exception as e:
+            print(e)
+            flask.abort(400, str(e))
         resp = make_response(jsonify({"game": game.id}))
         resp.set_cookie("player", player_name, domain='127.0.0.1')
         resp.set_cookie("gid", game.id)
@@ -110,15 +114,31 @@ def get_authenticated_game_and_player_or_error(gid, request):
     player = request.cookies.to_dict()['player']
     if intended_game != gid:
         # the game in the cookie is different than the one the request is trying to get info for
-        print("Trying to get data for {} when the game the player is in is {}".format(gid, intended_game))
-        flask.abort(403)
+        error = "Trying to get data for {} when the game the player is in is {}".format(gid, intended_game)
+        print(error)
+        flask.abort(403, error)
     game = get_game_by_id(gid)
     if not game:
         flask.abort(404)
     if not game.contains_player(player):
-        print("Player {} is not in game {}".format(player, gid))
-        flask.abort(403)
+        error = "Player {} is not in game {}".format(player, gid)
+        print(error)
+        flask.abort(403, error)
     return game, player
+
+
+def get_authenticated_game_and_player_or_error_for_resume(request):
+    intended_game = request.cookies.to_dict()['gid']
+    player = request.cookies.to_dict()['player']
+    game = get_game_by_id(intended_game)
+    if not game:
+        flask.abort(404)
+    if not game.contains_player(player):
+        error = "Player {} is not in game {}".format(player, intended_game)
+        print(error)
+        flask.abort(403, error)
+    return game, player
+
 
 
 @app.route('/games/<gid>/start', methods=['PUT'])
@@ -163,10 +183,8 @@ def games_vote_card(gid):
         card = request.json['vote'] # this is the 'string' of the card
         game.cast_vote(player, card)
     except Exception as e:
-        import traceback
-        traceback.print_exception(e)
         print(e)
-        flask.abort(400)
+        flask.abort(400, str(e))
     game_data = game.serialize_for_status_view(player)
     return jsonify({"game": game_data})
 
@@ -182,9 +200,17 @@ def games_next_round(gid):
         import traceback
         traceback.print_exception(e)
         print(e)
-        flask.abort(400)
+        flask.abort(400, str(e))
     game_data = game.serialize_for_status_view(player)
     return jsonify({"game": game_data})
+
+
+@app.route('/games/resume', methods=['GET'])
+@cross_origin()
+@utils.authenticate_with_cookie_token
+def games_resume_from_cookie():
+    game, player = get_authenticated_game_and_player_or_error_for_resume(request)
+    return jsonify({"game": game.id, 'player': player})
 
 
 
