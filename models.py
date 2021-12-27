@@ -47,10 +47,10 @@ class Game(object):
 
     def allocate_cards(self, card_allocation=SUBSEQUENT_CARD_ALLOCATION):
         self.currentRound['allocations'] = {}
-        allocations = self.currentRound['allocations']
         if len(self.sealedRounds) > 0:
             prevRound = self.sealedRounds[-1]
             self.currentRound['allocations'] = copy(prevRound['allocations'])
+        allocations = self.currentRound['allocations']
         for _ in range(card_allocation):
             for player in self.players:
                 if len(self.cards) == 0:
@@ -83,7 +83,9 @@ class Game(object):
         return player in self.players
 
     def get_player_info(self):
-        return [{"name": p, 'isNarrator': self.is_narrator(p), 'hasVoted': self.has_voted(p), 'hasSetCard': self.has_set_card(p), 'score': self.get_score(p)} for p in self.players]
+        return [{"name": p, 'isNarrator': self.is_narrator(p), 'hasVoted': self.has_voted(p),
+                 'hasSetCard': self.has_set_card(p), 'score': self.get_score(p),
+                 'roundScore': self.get_round_score(p)} for p in self.players]
 
 
     def get_score(self, player):
@@ -91,6 +93,13 @@ class Game(object):
             return 0
         else:
             return self.scores[player]
+
+
+    def get_round_score(self, player):
+        if not self.is_started():
+            return 0
+        else:
+            return self.currentRound['scores'].get(player, 0)
 
     def has_set_card(self, player):
         if not self.is_started():
@@ -223,9 +232,9 @@ class Game(object):
         for player, card in votes.items():
             votes_to_card[card] += 1
 
+        # for the extra pointz
         for player, card in self.currentRound['decoys'].items():
             card_to_player[card] = player
-        card_to_player[self.get_narrator()] = self.get_narrator_card()
 
         correct_votes = votes_to_card[self.get_narrator_card()]
 
