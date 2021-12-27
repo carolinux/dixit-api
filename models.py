@@ -1,5 +1,7 @@
+from collections import defaultdict
 import random
 from uuid import uuid4
+from copy import copy
 
 WAITING_TO_START = "waiting_to_start"
 WAITING_FOR_NARRATOR = "waiting_for_narrator"
@@ -25,9 +27,10 @@ class Game(object):
         self.currentState = WAITING_TO_START
         self.players = []
         self.narratorIdx = None
-        self.cards = list(range(1, 101)) # <- for the medusa deck change... allow to choose deck?
+        self.cards = self.init_cards()
 
-
+    def init_cards(self):
+        return list(range(1, 101)) # <- for the medusa deck change... allow to choose deck?
 
     def create_playing_order(self):
         random.shuffle(self.cards)
@@ -45,12 +48,19 @@ class Game(object):
     def allocate_cards(self, card_allocation=SUBSEQUENT_CARD_ALLOCATION):
         self.currentRound['allocations'] = {}
         allocations = self.currentRound['allocations']
+        if len(self.sealedRounds) > 0:
+            prevRound = self.sealedRounds[-1]
+            self.currentRound['allocations'] = copy(prevRound['allocations'])
         for _ in range(card_allocation):
             for player in self.players:
+                if len(self.cards) == 0:
+                    # TODO: we ran out of new cards? wrap around and reshuffle?
+                    break
                 card = self.cards.pop()
                 if player not in allocations:
                     allocations[player] = []
                 allocations[player].append(card)
+
 
 
     def serialize_for_list_view(self, joinable_for_player=None):
@@ -73,8 +83,14 @@ class Game(object):
         return player in self.players
 
     def get_player_info(self):
-        return [{"name": p, 'isNarrator': self.is_narrator(p), 'hasVoted': self.has_voted(p), 'hasSetCard': self.has_set_card(p)} for p in self.players]
+        return [{"name": p, 'isNarrator': self.is_narrator(p), 'hasVoted': self.has_voted(p), 'hasSetCard': self.has_set_card(p), 'score': self.get_score(p)} for p in self.players]
 
+
+    def get_score(self, player):
+        if not self.is_started():
+            return 0
+        else:
+            return self.scores[player]
 
     def has_set_card(self, player):
         if not self.is_started():
@@ -131,10 +147,18 @@ class Game(object):
         if self.currentState == WAITING_FOR_PLAYERS:
             # do not reveal the cards to the frontend
             return (1 + len(self.currentRound['decoys'])) * ['back']
-        if self.currentState == WAITING_FOR_VOTES:
+        if self.currentState in (WAITING_FOR_VOTES, ROUND_REVEALED):
             return self.currentRound['allCards']
         return []
 
+    def num(self):
+        return len(self.players)
+
+    def get_non_narrators(self):
+        return [p for p in self.players if not self.is_narrator(p)]
+
+    def get_narrator_card(self):
+        return self.currentRound.get('narratorCard')
 
     ## state transitions from here on -- need to be locked ##
 
@@ -154,12 +178,16 @@ class Game(object):
         else:
             #self.sealedStates.append(self.currentState)
             self.create_playing_order()
-            self.narratorIdx = 0
-            self.currentState = WAITING_FOR_NARRATOR
+            self.advance_narrator()
+            self.scores = {p:0 for p in self.players}
+
+
             self.currentRound = {}
             self.currentRound['decoys'] = {}
             self.currentRound['votes'] = {}
+            self.currentRound['scores'] = {}
             self.allocate_cards(INITIAL_CARD_ALLOCATION)
+            self.currentState = WAITING_FOR_NARRATOR
 
 
     def set_narrator_card(self, player, card, phrase):
@@ -186,6 +214,41 @@ class Game(object):
             random.shuffle(self.currentRound['allCards']);
             self.currentState = WAITING_FOR_VOTES
 
+
+    def set_scores(self):
+        scores = defaultdict(lambda:0)
+        votes = self.currentRound['votes']
+        votes_to_card = defaultdict(lambda:0)
+        card_to_player = {}
+        for player, card in votes.items():
+            votes_to_card[card] += 1
+
+        for player, card in self.currentRound['decoys'].items():
+            card_to_player[card] = player
+        card_to_player[self.get_narrator()] = self.get_narrator_card()
+
+        correct_votes = votes_to_card[self.get_narrator_card()]
+
+        if 0 < correct_votes < self.num() - 1:
+            scores[self.get_narrator()] = 3
+            for p in self.get_non_narrators():
+                if votes[p] == self.get_narrator_card():
+                    scores[p] = 3
+        else:
+            scores[self.get_narrator()] = 0
+            for p in self.get_non_narrators():
+                scores[p] = 2
+
+        for card, votes in votes_to_card.items():
+            if card == self.get_narrator_card():
+                continue
+            scores[card_to_player[card]]+=1
+
+        for p in self.players:
+            self.scores[p] += scores[p]
+        self.currentRound['scores'] = scores
+
+
     def cast_vote(self, player, card):
         if self.is_narrator(player):
             raise Exception("Trying to vote card while being narrator")
@@ -195,8 +258,30 @@ class Game(object):
             raise Exception("Trying to vote for own card, which is not allowed")
         self.currentRound['votes'][player] = card
 
-        if len() == len(self.players) - 1:
+        if len(self.currentRound['votes']) == len(self.players) - 1:
+            self.set_scores()
             self.currentState = ROUND_REVEALED
+
+    def advance_narrator(self):
+        if len(self.sealedRounds) == 0:
+            self.narratorIdx = 0
+            return
+        self.narratorIdx+=1
+        if self.narratorIdx == self.num():
+            self.narratorIdx = 0
+
+
+    def start_next_round(self):
+        self.sealedRounds.append(self.currentRound)
+        self.advance_narrator()
+
+        self.currentRound = {}
+        self.currentRound['decoys'] = {}
+        self.currentRound['votes'] = {}
+        self.currentRound['scores'] = {}
+        self.allocate_cards(SUBSEQUENT_CARD_ALLOCATION)
+        self.currentState = WAITING_FOR_NARRATOR
+
 
 
 

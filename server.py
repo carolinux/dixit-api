@@ -24,7 +24,6 @@ app.config['CORS_ORIGINS'] = ["http://127.0.0.1:3000"]
 app.config['CORS_EXPOSE_HEADERS'] = ['Access-Control-Allow-Origin']
 
 games = {}
-games['chonky-bird'] = Game('chonky-bird')
 counter = {'c':0}
 
 
@@ -164,6 +163,24 @@ def games_vote_card(gid):
         card = request.json['vote'] # this is the 'string' of the card
         game.cast_vote(player, card)
     except Exception as e:
+        import traceback
+        traceback.print_exception(e)
+        print(e)
+        flask.abort(400)
+    game_data = game.serialize_for_status_view(player)
+    return jsonify({"game": game_data})
+
+
+@app.route('/games/<gid>/next', methods=['PUT'])
+@cross_origin()
+@utils.authenticate_with_cookie_token
+def games_next_round(gid):
+    game, player = get_authenticated_game_and_player_or_error(gid, request)
+    try:
+        game.start_next_round()
+    except Exception as e:
+        import traceback
+        traceback.print_exception(e)
         print(e)
         flask.abort(400)
     game_data = game.serialize_for_status_view(player)
