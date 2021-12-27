@@ -155,6 +155,21 @@ def games_set_card(gid):
     return jsonify({"game": game_data})
 
 
+@app.route('/games/<gid>/vote', methods=['PUT'])
+@cross_origin()
+@utils.authenticate_with_cookie_token
+def games_vote_card(gid):
+    game, player = get_authenticated_game_and_player_or_error(gid, request)
+    try:
+        card = request.json['vote'] # this is the 'string' of the card
+        game.cast_vote(player, card)
+    except Exception as e:
+        print(e)
+        flask.abort(400)
+    game_data = game.serialize_for_status_view(player)
+    return jsonify({"game": game_data})
+
+
 
 
 if __name__ == '__main__':                                                      

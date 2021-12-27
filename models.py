@@ -73,7 +73,7 @@ class Game(object):
         return player in self.players
 
     def get_player_info(self):
-        return [{"name": p, 'isNarrator': self.is_narrator(p), 'hasVoted': False, 'hasSetCard': self.has_set_card(p)} for p in self.players]
+        return [{"name": p, 'isNarrator': self.is_narrator(p), 'hasVoted': self.has_voted(p), 'hasSetCard': self.has_set_card(p)} for p in self.players]
 
 
     def has_set_card(self, player):
@@ -83,6 +83,15 @@ class Game(object):
             return self.currentRound.get("narratorCard") is not None
         else:
             return self.currentRound.get("decoys", {}).get(player) is not None
+
+
+    def has_voted(self, player):
+        if not self.is_started():
+            return False
+        if self.is_narrator(player):
+            return False
+        else:
+            return self.currentRound.get("votes", {}).get(player) is not None
 
 
     def serialize_for_status_view(self, player):
@@ -110,7 +119,7 @@ class Game(object):
     def get_hand(self, player):
         allocations = self.currentRound.get('allocations', {}).get(player, [])
         if self.currentState == WAITING_FOR_VOTES:
-            return ['back'] * len(allocations)
+            return ['back'] * len(allocations) # hide the hand while voting to reduce confusion
         else:
             return allocations
 
@@ -149,6 +158,7 @@ class Game(object):
             self.currentState = WAITING_FOR_NARRATOR
             self.currentRound = {}
             self.currentRound['decoys'] = {}
+            self.currentRound['votes'] = {}
             self.allocate_cards(INITIAL_CARD_ALLOCATION)
 
 
@@ -175,4 +185,18 @@ class Game(object):
             self.currentRound['allCards'] = [self.currentRound['narratorCard']] + list(self.currentRound['decoys'].values())
             random.shuffle(self.currentRound['allCards']);
             self.currentState = WAITING_FOR_VOTES
+
+    def cast_vote(self, player, card):
+        if self.is_narrator(player):
+            raise Exception("Trying to vote card while being narrator")
+        if self.currentState != WAITING_FOR_VOTES:
+            raise Exception("Trying to set card at an invalid point in the game")
+        if card == self.currentRound['decoys'][player]:
+            raise Exception("Trying to vote for own card, which is not allowed")
+        self.currentRound['votes'][player] = card
+
+        if len() == len(self.players) - 1:
+            self.currentState = ROUND_REVEALED
+
+
 

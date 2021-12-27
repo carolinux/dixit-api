@@ -17,7 +17,10 @@ def authenticate_with_cookie_token(f):
         token = cookies.get('token')
         if not player or not gid or not token:
             flask.abort(401)
-        data = jwt.decode(token, conf.secret_key, algorithms=["HS256"])
+        try:
+            data = jwt.decode(token, conf.secret_key, algorithms=["HS256"])
+        except: # signature has expired
+            flask.abort(403)
         if data.get('public_id') != player or data.get('gid') != gid:
             flask.abort(403)
         return f(*args, **kwargs)
