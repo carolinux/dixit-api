@@ -128,11 +128,39 @@ class Game(object):
         return data
 
     def get_card_statuses(self, player):
+        if self.currentState == WAITING_FOR_PLAYERS:
+            return {'myPlayed': self.get_played_card(player), 'myVoted': '', 'summary': {}}
         if self.currentState == WAITING_FOR_VOTES:
-            return {'myPlayed': self.get_played_card(player) , 'myVoted': self.get_voted_card(player)}
+            return {'myPlayed': self.get_played_card(player), 'myVoted': self.get_voted_card(player), 'summary': {}}
         elif self.currentState == ROUND_REVEALED:
-            return {} # todo
+            return {'myPlayed': self.get_played_card(player), 'myVoted': self.get_voted_card(player), 'summary': self.get_all_cards_summary()}
         return {}
+
+    def get_all_cards_summary(self):
+        """for end of round"""
+        result = {}
+        for card in self.get_played_cards():
+            if card == self.get_narrator_card():
+                player = self.get_narrator()
+                narrator = True
+            else:
+                player = self.get_player_that_played_card(card)
+                narrator = False
+            votes = self.get_players_that_voted_for_card(card)
+            result[card] = {'player': player, 'isNarrator': narrator, 'votes': votes}
+        return result
+
+    def get_player_that_played_card(self, card):
+        for player, played_card in self.currentRound['decoys'].items():
+            if card == played_card:
+                return player
+
+    def get_players_that_voted_for_card(self, card):
+        res = []
+        for player, voted_card in self.currentRound['votes'].items():
+            if voted_card == card:
+                res.append(player)
+        return res
 
     def get_played_card(self, player):
         if not self.is_narrator(player):
