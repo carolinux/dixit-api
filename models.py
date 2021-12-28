@@ -15,6 +15,7 @@ INITIAL_CARD_ALLOCATION = 6
 SUBSEQUENT_CARD_ALLOCATION = 1
 WIN_SCORE = 30
 
+
 # TODO: state transitions...
 
 
@@ -119,6 +120,7 @@ class Game(object):
     def serialize_for_status_view(self, player):
         data = self.serialize_for_list_view()
         data['player'] = player
+        data['winners'] = self.winners
         data['playerList'] = self.get_player_info()
         data['roundInfo'] = self.get_round_info(player)
         data['isNarrator'] = self.is_narrator(player)
@@ -232,6 +234,7 @@ class Game(object):
 
         correct_votes = votes_to_card[self.get_narrator_card()]
 
+
         if 0 < correct_votes < self.num() - 1:
             scores[self.get_narrator()] = 3
             for p in self.get_non_narrators():
@@ -246,6 +249,7 @@ class Game(object):
             if card == self.get_narrator_card():
                 continue
             scores[card_to_player[card]]+=1
+
 
         for p in self.players:
             self.scores[p] += scores[p]
@@ -302,11 +306,12 @@ class Game(object):
 
         medals = ['gold', 'silver', 'bronze']
 
-        sorted_scores = sorted(self.scores.items(), key=lambda x:x[1], reverse=True)
+        sorted_scores = sorted(self.scores.items(), key=lambda x:x[1])
 
-        for medal in medals:
+        for _ in medals:
             if sorted_scores:
-                self.winners.append({medal: sorted_scores.pop()})
+                player, score = sorted_scores.pop()
+                self.winners.append({'player': player, 'score': score})
         self.currentState = GAME_ENDED
         return True
 
