@@ -65,9 +65,9 @@ def games_api():
             print(e)
             flask.abort(400, str(e))
         resp = make_response(jsonify({"game": game.id}))
-        resp.set_cookie("player", player_name, domain='127.0.0.1')
-        resp.set_cookie("gid", game.id)
-        resp.set_cookie("token", utils.create_token(player_name, game.id))
+        resp.set_cookie("player", player_name, httponly=True, samesite='Lax')
+        resp.set_cookie("gid", game.id, httponly=True, samesite='Lax')
+        resp.set_cookie("token", utils.create_token(player_name, game.id), httponly=True, samesite='Lax')
         return resp
 
     else:

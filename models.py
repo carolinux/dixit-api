@@ -120,11 +120,20 @@ class Game(object):
     def serialize_for_status_view(self, player):
         data = self.serialize_for_list_view()
         data['player'] = player
+        data['votedCard'] = '' # self.get_voted_card(player)
         data['winners'] = self.winners
         data['playerList'] = self.get_player_info()
         data['roundInfo'] = self.get_round_info(player)
         data['isNarrator'] = self.is_narrator(player)
         return data
+
+    def get_voted_card(self, player):
+        if not self.is_started():
+            return ''
+        if self.is_narrator(player):
+            return self.currentRound.get("narratorCard", '')
+        else:
+            return self.currentRound.get('decoys', {}).get(player, '')
 
     def get_narrator(self):
         if self.narratorIdx is not None:
