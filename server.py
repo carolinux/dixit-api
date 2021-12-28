@@ -197,8 +197,6 @@ def games_next_round(gid):
     try:
         game.start_next_round()
     except Exception as e:
-        import traceback
-        traceback.print_exception(e)
         print(e)
         flask.abort(400, str(e))
     game_data = game.serialize_for_status_view(player)

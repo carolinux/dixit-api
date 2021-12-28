@@ -8,10 +8,12 @@ WAITING_FOR_NARRATOR = "waiting_for_narrator"
 WAITING_FOR_PLAYERS = "waiting_for_players"
 WAITING_FOR_VOTES = "waiting_for_votes"
 ROUND_REVEALED = "round_revealed"
+GAME_ENDED = "game_ended"
 MIN_PLAYERS = 1 # for testing..
 MAX_PLAYERS = 6
 INITIAL_CARD_ALLOCATION = 6
 SUBSEQUENT_CARD_ALLOCATION = 1
+WIN_SCORE = 30
 
 # TODO: state transitions...
 
@@ -23,11 +25,14 @@ class Game(object):
             self.id = id
         else:
             self.id = uuid4()
+        self.currentRound = {}
         self.sealedRounds = []
-        self.currentState = WAITING_TO_START
         self.players = []
+        self.winners = []
+        self.scores = {}
         self.narratorIdx = None
         self.cards = self.init_cards()
+        self.currentState = WAITING_TO_START
 
     def init_cards(self):
         return list(range(1, 101)) # <- for the medusa deck change... allow to choose deck?
@@ -35,12 +40,6 @@ class Game(object):
     def create_playing_order(self):
         random.shuffle(self.cards)
         random.shuffle(self.players)
-
-
-    def rejoin(self, player_name):
-        """rejoin game on disconnec"""
-        return
-
 
     def is_started(self):
         return self.currentState != WAITING_TO_START
@@ -60,8 +59,6 @@ class Game(object):
                 if player not in allocations:
                     allocations[player] = []
                 allocations[player].append(card)
-
-
 
     def serialize_for_list_view(self, joinable_for_player=None):
         if not joinable_for_player:
@@ -121,11 +118,11 @@ class Game(object):
 
     def serialize_for_status_view(self, player):
         data = self.serialize_for_list_view()
+        data['player'] = player
         data['playerList'] = self.get_player_info()
         data['roundInfo'] = self.get_round_info(player)
         data['isNarrator'] = self.is_narrator(player)
         return data
-
 
     def get_narrator(self):
         if self.narratorIdx is not None:
@@ -140,14 +137,12 @@ class Game(object):
         played_cards = self.get_played_cards()
         return {'idx': idx, 'narrator': self.get_narrator(), 'phrase': phrase, 'hand': hand, 'playedCards': played_cards}
 
-
     def get_hand(self, player):
         allocations = self.currentRound.get('allocations', {}).get(player, [])
         if self.currentState == WAITING_FOR_VOTES:
             return ['back'] * len(allocations) # hide the hand while voting to reduce confusion
         else:
             return allocations
-
 
     def is_narrator(self, player):
         return self.get_narrator() == player
@@ -200,7 +195,6 @@ class Game(object):
             self.allocate_cards(INITIAL_CARD_ALLOCATION)
             self.currentState = WAITING_FOR_NARRATOR
 
-
     def set_narrator_card(self, player, card, phrase):
         if not self.is_narrator(player):
             raise Exception("Trying to set card without being narrator {}, {}".format(player, self.get_narrator()))
@@ -210,7 +204,6 @@ class Game(object):
         self.currentRound['narratorCard'] = card
         self.currentRound['allocations'][player].remove(card)
         self.currentState = WAITING_FOR_PLAYERS
-
 
     def set_decoy_card(self, player, card):
         if self.is_narrator(player):
@@ -224,7 +217,6 @@ class Game(object):
             self.currentRound['allCards'] = [self.currentRound['narratorCard']] + list(self.currentRound['decoys'].values())
             random.shuffle(self.currentRound['allCards']);
             self.currentState = WAITING_FOR_VOTES
-
 
     def set_scores(self):
         scores = defaultdict(lambda:0)
@@ -259,7 +251,6 @@ class Game(object):
             self.scores[p] += scores[p]
         self.currentRound['scores'] = scores
 
-
     def cast_vote(self, player, card):
         if self.is_narrator(player):
             raise Exception("Trying to vote card while being narrator")
@@ -281,9 +272,15 @@ class Game(object):
         if self.narratorIdx == self.num():
             self.narratorIdx = 0
 
-
     def start_next_round(self):
+        if self.currentState != ROUND_REVEALED:
+            raise Exception("Illegal state {}. Cannot transition to next round.".format(self.currentState))
         self.sealedRounds.append(self.currentRound)
+
+        did_end = self.end()
+        if did_end:
+            return
+
         self.advance_narrator()
 
         self.currentRound = {}
@@ -292,6 +289,30 @@ class Game(object):
         self.currentRound['scores'] = {}
         self.allocate_cards(SUBSEQUENT_CARD_ALLOCATION)
         self.currentState = WAITING_FOR_NARRATOR
+
+    def end(self):
+        if self.currentState != ROUND_REVEALED:
+            raise Exception("Cannot end")
+        end = False
+        for player, score in self.scores.items():
+            if score >= WIN_SCORE:
+                end = True
+        if not end:
+            return False
+
+        medals = ['gold', 'silver', 'bronze']
+
+        sorted_scores = sorted(self.scores.items(), key=lambda x:x[1], reverse=True)
+
+        for medal in medals:
+            if sorted_scores:
+                self.winners.append({medal: sorted_scores.pop()})
+        self.currentState = GAME_ENDED
+        return True
+
+
+
+
 
 
 
