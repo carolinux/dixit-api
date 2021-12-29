@@ -1,15 +1,16 @@
 import flask
-from flask import Flask, request, jsonify, make_response
-#from flask_socketio import SocketIO, emit
+from flask import Flask, request, jsonify, make_response, render_template
+# from flask_socketio import SocketIO, emit
 from flask_cors import CORS, cross_origin
-
 
 from cute_ids import generate_cute_id
 from models import Game
 import utils
 import conf
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='',
+            static_folder='react_build',
+            template_folder='react_build')
 app.config['SECRET_KEY'] = conf.secret_key
 app.config["DEBUG"] = True
 cors = CORS(app)
@@ -17,11 +18,35 @@ cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_SUPPORTS_CREDENTIALS'] = True
 app.config['CORS_SUPPORTS_CREDENTIALS'] = True
-#app.config['CORS_ORIGINS'] = ["http://127.0.0.1:3000", "http://145.40.194.146:8000"] # this is somehow ignored
+# app.config['CORS_ORIGINS'] = ["http://127.0.0.1:3000", "http://145.40.194.146:8000"] # this is somehow ignored
 app.config['CORS_EXPOSE_HEADERS'] = ['Access-Control-Allow-Origin']
 
 games = {}
-counter = {'c':0}
+counter = {'c': 0}
+
+## React Routes ##
+
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+@app.route("/login")
+def login():
+    return render_template("index.html")
+
+
+@app.route("/board/<gid>")
+def board(gid):
+    return render_template("index.html")
+
+
+@app.route("/board/<gid>/winners")
+def board_winners():
+    return render_template("index.html")
+
+## End of React Routes ##
+
 
 
 @app.route('/games', methods=['POST', 'GET'])
@@ -47,9 +72,9 @@ def games_api():
             print(e)
             flask.abort(400, str(e))
         resp = make_response(jsonify({"game": game.id}))
-        resp.set_cookie("player", player_name, httponly=True, samesite=None)
-        resp.set_cookie("gid", game.id, httponly=True, samesite=None)
-        resp.set_cookie("token", utils.create_token(player_name, game.id), httponly=True, samesite=None)
+        resp.set_cookie("player", player_name, httponly=True, samesite='Strict')
+        resp.set_cookie("gid", game.id, httponly=True, samesite='Strict')
+        resp.set_cookie("token", utils.create_token(player_name, game.id), httponly=True, samesite='Strict')
         return resp
 
     else:
@@ -66,8 +91,10 @@ def creds(response):
     response.headers['Access-Control-Allow-Origin'] = "http://145.40.194.146:8000"
     return response
 
+
 def get_game_by_id(gid):
     return games.get(gid)
+
 
 def add_game(g):
     games[g.id] = g
@@ -77,10 +104,9 @@ def add_game(g):
 @cross_origin()
 @utils.authenticate_with_cookie_token
 def games_status_api(gid):
-    counter['c']+=1
+    counter['c'] += 1
     print("Called {} times".format(counter['c']))
     if request.method == "GET":
-
         ### verify that game exists and current request is allowed to get its general state and their personal data ###
         game, player = get_authenticated_game_and_player_or_error(gid, request)
         ### end verify ###
@@ -122,7 +148,6 @@ def get_authenticated_game_and_player_or_error_for_resume(request):
     return game, player
 
 
-
 @app.route('/games/<gid>/start', methods=['PUT'])
 @cross_origin()
 @utils.authenticate_with_cookie_token
@@ -162,7 +187,7 @@ def games_set_card(gid):
 def games_vote_card(gid):
     game, player = get_authenticated_game_and_player_or_error(gid, request)
     try:
-        card = request.json['vote'] # this is the 'string' of the card
+        card = request.json['vote']  # this is the 'string' of the card
         game.cast_vote(player, card)
     except Exception as e:
         print(e)
@@ -193,7 +218,7 @@ def games_resume_from_cookie():
     return jsonify({"game": game.id, 'player': player})
 
 
-if __name__ == '__main__':                                                      
-  app.run(port=5000, threaded=False, debug=False, host="0.0.0.0")
-  #app.run(port=5000, threaded=False, debug=True) #local
-  # pipenv run gunicorn server:app -w=1 -b 0.0.0.0:5000 --threads 4
+if __name__ == '__main__':
+    app.run(port=5000, threaded=False, debug=False, host="0.0.0.0")
+    # app.run(port=5000, threaded=False, debug=True) #local
+    # pipenv run gunicorn server:app -w=1 -b 0.0.0.0:5000 --threads 4
