@@ -213,7 +213,12 @@ class Game(object):
     def get_narrator_card(self):
         return self.currentRound.get('narratorCard')
 
-    ## state transitions from here on -- need to be locked ##
+    ## state transitions from here on -- need to be locked in teh future ##
+    # strictly speaking: start and next can be problematic if called at the same time by multiple people
+    # because they would end up in re-allocating the cards (so there may be a card that appears and gets replaced)
+    # (could possibly get solved by shuffling with specific seed ? not really)
+    # join also may end up with 7 players for example
+    # other stuff just does double work if called in parallel
 
     def join(self, player_name):
         if player_name in self.players:

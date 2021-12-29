@@ -1,8 +1,6 @@
-import datetime
-
 import flask
 from flask import Flask, request, jsonify, make_response
-from flask_socketio import SocketIO, emit
+#from flask_socketio import SocketIO, emit
 from flask_cors import CORS, cross_origin
 
 
@@ -14,32 +12,16 @@ import conf
 app = Flask(__name__)
 app.config['SECRET_KEY'] = conf.secret_key
 app.config["DEBUG"] = True
-socketio = SocketIO(app)
 cors = CORS(app)
 # origins=["http://127.0.0.1:3000"], headers=['Content-Type'], expose_headers=['Access-Control-Allow-Origin'], supports_credentials=True
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_SUPPORTS_CREDENTIALS'] = True
 app.config['CORS_SUPPORTS_CREDENTIALS'] = True
-app.config['CORS_ORIGINS'] = ["http://127.0.0.1:3000"]
+#app.config['CORS_ORIGINS'] = ["http://127.0.0.1:3000", "http://145.40.194.146:8000"] # this is somehow ignored
 app.config['CORS_EXPOSE_HEADERS'] = ['Access-Control-Allow-Origin']
 
 games = {}
 counter = {'c':0}
-
-
-@socketio.on('connect')                                                         
-def connect():      
-  print('Client connected')                                                            
-  emit('message', {'welcome': 'welcome'})
-
-
-@app.route('/cookie/')
-def cookie():
-    res = make_response("Setting a cookie")
-    res.set_cookie('foog', 'bar')
-    res.set_cookie('whar', 'garbl')
-    print(res.headers)
-    return res
 
 
 @app.route('/games', methods=['POST', 'GET'])
@@ -65,9 +47,9 @@ def games_api():
             print(e)
             flask.abort(400, str(e))
         resp = make_response(jsonify({"game": game.id}))
-        resp.set_cookie("player", player_name, httponly=True, samesite='Lax')
-        resp.set_cookie("gid", game.id, httponly=True, samesite='Lax')
-        resp.set_cookie("token", utils.create_token(player_name, game.id), httponly=True, samesite='Lax')
+        resp.set_cookie("player", player_name, httponly=True, samesite=None)
+        resp.set_cookie("gid", game.id, httponly=True, samesite=None)
+        resp.set_cookie("token", utils.create_token(player_name, game.id), httponly=True, samesite=None)
         return resp
 
     else:
@@ -81,7 +63,7 @@ def games_api():
 @app.after_request
 def creds(response):
     response.headers['Access-Control-Allow-Credentials'] = 'true'
-    response.headers['Access-Control-Allow-Origin'] = "http://127.0.0.1:3000"
+    response.headers['Access-Control-Allow-Origin'] = "http://145.40.194.146:8000"
     return response
 
 def get_game_by_id(gid):
@@ -212,4 +194,6 @@ def games_resume_from_cookie():
 
 
 if __name__ == '__main__':                                                      
-  app.run(port=5000, threaded=False) #debug=True)
+  app.run(port=5000, threaded=False, debug=False, host="0.0.0.0")
+  #app.run(port=5000, threaded=False, debug=True) #local
+  # pipenv run gunicorn server:app -w=1 -b 0.0.0.0:5000 --threads 4
