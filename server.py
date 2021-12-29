@@ -211,7 +211,5 @@ def games_resume_from_cookie():
     return jsonify({"game": game.id, 'player': player})
 
 
-
-
 if __name__ == '__main__':                                                      
-  socketio.run(app, port=5000, debug=True) 
+  app.run(port=5000, threaded=False) #debug=True)

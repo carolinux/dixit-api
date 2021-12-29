@@ -9,14 +9,14 @@ WAITING_FOR_PLAYERS = "waiting_for_players"
 WAITING_FOR_VOTES = "waiting_for_votes"
 ROUND_REVEALED = "round_revealed"
 GAME_ENDED = "game_ended"
-MIN_PLAYERS = 1 # for testing..
+MIN_PLAYERS = 2 # for testing..
 MAX_PLAYERS = 6
 INITIAL_CARD_ALLOCATION = 6
 SUBSEQUENT_CARD_ALLOCATION = 1
 WIN_SCORE = 30
 
 
-# TODO: state transitions...
+# TODO: persistent storage !!
 
 
 class Game(object):
