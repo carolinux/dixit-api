@@ -54,18 +54,17 @@ class Game(object):
         for _ in range(card_allocation):
             for player in self.players:
                 if len(self.cards) == 0:
-                    # TODO: we ran out of new cards? wrap around and reshuffle?
-                    break
+                    # we ran out of new cards -- wrap around and reshuffle
+                    self.cards = self.init_cards()
+                    random.shuffle(self.cards)
                 card = self.cards.pop()
                 if player not in allocations:
                     allocations[player] = []
                 allocations[player].append(card)
 
     def serialize_for_list_view(self, joinable_for_player=None):
-        if not joinable_for_player:
-            return {'id': self.id, 'players': len(self.players), 'state': self.currentState, 'playerString': ','.join(self.players)}
-        else:
-            return {'id': self.id, 'players': len(self.players), 'state': self.currentState,
+
+        return {'id': self.id, 'players': len(self.players), 'state': self.currentState,
                     'playerString': ','.join(self.players), 'join_action': self.get_joinability(joinable_for_player)}
 
     def get_joinability(self, player):

@@ -18,10 +18,11 @@ cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_SUPPORTS_CREDENTIALS'] = True
 app.config['CORS_SUPPORTS_CREDENTIALS'] = True
-# app.config['CORS_ORIGINS'] = ["http://127.0.0.1:3000", "http://145.40.194.146:8000"] # this is somehow ignored
+app.config['CORS_ORIGINS'] = ["http://127.0.0.1:3000"]
 app.config['CORS_EXPOSE_HEADERS'] = ['Access-Control-Allow-Origin']
 
-games = {}
+gg = Game("chonky-squirrel")
+games = {'chonky-squirrel': gg}
 counter = {'c': 0}
 
 ## React Routes ##
@@ -31,8 +32,8 @@ def home():
     return render_template("index.html")
 
 
-@app.route("/login")
-def login():
+@app.route("/login/<gid>")
+def login(gid):
     return render_template("index.html")
 
 
@@ -88,7 +89,7 @@ def games_api():
 @app.after_request
 def creds(response):
     response.headers['Access-Control-Allow-Credentials'] = 'true'
-    response.headers['Access-Control-Allow-Origin'] = "http://145.40.194.146:8000" #TODO: use only the 127.0.0.1 url, since prod doesn't require CORS requests
+    response.headers['Access-Control-Allow-Origin'] = "http://127.0.0.1:3000"
     return response
 
 
