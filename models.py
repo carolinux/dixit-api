@@ -40,7 +40,7 @@ class Game(object):
 
     def create_playing_order(self):
         random.shuffle(self.cards)
-        random.shuffle(self.players)
+        #random.shuffle(self.players)# first one to join starts
 
     def is_started(self):
         return self.currentState != WAITING_TO_START
@@ -300,7 +300,7 @@ class Game(object):
         for card, votes in votes_to_card.items():
             if card == self.get_narrator_card():
                 continue
-            scores[card_to_player[card]]+=1
+            scores[card_to_player[card]]+=votes
 
 
         for p in self.players:

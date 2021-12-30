@@ -1,1 +1,1 @@
-secret_key = "whargarbll"
+secret_key = "whargarbl!!"

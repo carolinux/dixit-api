@@ -88,7 +88,7 @@ def games_api():
 @app.after_request
 def creds(response):
     response.headers['Access-Control-Allow-Credentials'] = 'true'
-    response.headers['Access-Control-Allow-Origin'] = "http://145.40.194.146:8000"
+    response.headers['Access-Control-Allow-Origin'] = "http://145.40.194.146:8000" #TODO: use only the 127.0.0.1 url, since prod doesn't require CORS requests
     return response
 
 
