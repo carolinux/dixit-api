@@ -21,8 +21,8 @@ app.config['CORS_SUPPORTS_CREDENTIALS'] = True
 app.config['CORS_ORIGINS'] = ["http://127.0.0.1:3000"]
 app.config['CORS_EXPOSE_HEADERS'] = ['Access-Control-Allow-Origin']
 
-gg = Game("chonky-squirrel")
-games = {'chonky-squirrel': gg}
+gg = Game("yellow-ladybug")
+games = {'yellow-ladybug': gg}
 counter = {'c': 0}
 
 ## React Routes ##
