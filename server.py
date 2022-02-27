@@ -36,7 +36,7 @@ counter = {'c': 0}
 def shutdown():
     # save the game data :)
     recs = []
-    for g in games:
+    for _, g in games.items():
         recs.append(g.to_json())
     data = {'games': recs}
     fn = os.path.join("./game_data/export_{}.json".format(datetime.now().strftime("%Y%m%d_%H%M%S")))

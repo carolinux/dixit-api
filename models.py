@@ -366,7 +366,7 @@ class Game(object):
         self.currentState = GAME_ENDED
         return True
 
-    def get_json(self):
+    def to_json(self):
         return {self.id: {'rounds': self.sealedRounds}}
 
 
