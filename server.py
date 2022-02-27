@@ -7,6 +7,11 @@ from cute_ids import generate_cute_id
 from models import Game
 import utils
 import conf
+import atexit
+
+import json
+from datetime import datetime
+import os
 
 app = Flask(__name__, static_url_path='',
             static_folder='react_build',
@@ -26,6 +31,18 @@ games = {'yellow-ladybug': gg}
 counter = {'c': 0}
 
 ## React Routes ##
+
+@atexit.register
+def shutdown():
+    # save the game data :)
+    recs = []
+    for g in games:
+        recs.append(g.to_json())
+    data = {'games': recs}
+    fn = os.path.join("./game_data/export_{}.json".format(datetime.now().strftime("%Y%m%d_%H%M%S")))
+    with open(fn, 'w') as f:
+        json.dump(data, f)
+
 
 @app.route("/")
 def home():
