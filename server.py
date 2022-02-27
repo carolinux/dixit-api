@@ -159,6 +159,14 @@ def get_authenticated_game_and_player_or_error_for_resume(request):
     game = get_game_by_id(intended_game)
     if not game:
         flask.abort(404)
+    if game.has_ended():
+        error = "Game {} has ended. Deleting cookie.".format(game.id)
+        print(error)
+        resp = make_response(error, 403)
+        resp.set_cookie("player", '', httponly=True, samesite='Strict', expires=0)
+        resp.set_cookie("gid", '', httponly=True, samesite='Strict', expires=0)
+        resp.set_cookie("token", '', httponly=True, samesite='Strict', expires=0)
+        return resp
     if not game.contains_player(player):
         error = "Player {} is not in game {}".format(player, intended_game)
         print(error)
