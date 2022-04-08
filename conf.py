@@ -1,1 +1,1 @@
-secret_key = "whargarbl!!"
+secret_key = "sumfin_else"

@@ -14,6 +14,7 @@ MAX_PLAYERS = 6
 INITIAL_CARD_ALLOCATION = 6
 SUBSEQUENT_CARD_ALLOCATION = 1
 WIN_SCORE = 36
+MAX_CARD = 110
 
 
 # TODO: persistent storage !!
@@ -36,7 +37,7 @@ class Game(object):
         self.currentState = WAITING_TO_START
 
     def init_cards(self):
-        return list(range(1, 101)) # <- for the medusa deck change... allow to choose deck?
+        return list(range(1, MAX_CARD + 1)) # <- for the medusa deck change... allow to choose deck?
 
     def create_playing_order(self):
         random.shuffle(self.cards)
@@ -55,7 +56,7 @@ class Game(object):
             for player in self.players:
                 if len(self.cards) == 0:
                     # we ran out of new cards -- wrap around and reshuffle
-                    self.cards = self.init_cards()
+                    self.cards = self.init_cards() # FIXME: this allows the player to get a card that is in another player's deck as their card (duplicates!). Although this has never visibly happened! Need to keep a usedcards data structure.
                     random.shuffle(self.cards)
                 card = self.cards.pop()
                 if player not in allocations:
@@ -265,7 +266,7 @@ class Game(object):
             raise Exception("Trying to set card at an invalid point in the game")
 
         self.currentRound['decoys'][player] = card
-        self.currentRound['allocations'][player].remove(card)
+        self.currentRound['allocations'][player].remove(card) # FIXME: here will crash if somebody maliciously sends a random card
         if len(self.currentRound['decoys']) == len(self.players) -1:
             self.currentRound['allCards'] = [self.currentRound['narratorCard']] + list(self.currentRound['decoys'].values())
             random.shuffle(self.currentRound['allCards']);
