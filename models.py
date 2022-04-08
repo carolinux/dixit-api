@@ -368,7 +368,8 @@ class Game(object):
 
     def to_json(self):
         """Basic record of the game."""
-        return {self.id: {'rounds': self.sealedRounds}}
+        print(self.sealedRounds)
+        return {self.id: {'rounds': self.sealedRounds, 'players': self.players, 'scores': self.scores}}
 
     def has_ended(self):
         return self.currentState == GAME_ENDED
