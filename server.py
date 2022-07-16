@@ -43,9 +43,11 @@ def shutdown():
     with open(fn, 'w') as f:
         json.dump(data, f)
 
+from datetime import datetime
 
 @app.route("/")
 def home():
+    print("one call at {}".format(datetime.now()))
     return render_template("index.html")
 
 
